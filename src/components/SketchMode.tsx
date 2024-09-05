@@ -2,11 +2,12 @@
 import React, { useRef, useState, useEffect, RefObject } from 'react';
 
 interface SketchModeProps {
+  users: string;
   setProcessedImage: (image: string | null) => void;
   canvasRef: RefObject<HTMLCanvasElement>;
 }
 
-const SketchMode: React.FC<SketchModeProps> = ({ setProcessedImage, canvasRef }) => {
+const SketchMode: React.FC<SketchModeProps> = ({ users,setProcessedImage, canvasRef }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [isButtonPressed, setIsButtonPressed] = useState(false);
@@ -46,6 +47,10 @@ const SketchMode: React.FC<SketchModeProps> = ({ setProcessedImage, canvasRef })
     }
   };
 
+  const stopDrawing = async () => {
+    setIsDrawing(false);
+  };
+
   const finishDrawing = async () => {
     setIsDrawing(false);
     if (!canvasRef.current) return;
@@ -68,7 +73,10 @@ const SketchMode: React.FC<SketchModeProps> = ({ setProcessedImage, canvasRef })
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ image: dataURL }),
+        body: JSON.stringify({ 
+          users: users,
+          image: dataURL 
+        }),
         signal: newAbortController.signal,
       });
 
@@ -109,7 +117,7 @@ const SketchMode: React.FC<SketchModeProps> = ({ setProcessedImage, canvasRef })
     event.preventDefault(); // タッチ移動時にスクロールを防ぐ
   };
 
-  //const handleMouseUp = () => finishDrawing();
+  const handleMouseUp = () => stopDrawing();
   //const handleTouchEnd = () => finishDrawing();
 
   return (
@@ -123,7 +131,7 @@ const SketchMode: React.FC<SketchModeProps> = ({ setProcessedImage, canvasRef })
             height="500"
             className="border border-black"
             onMouseDown={handleMouseDown}
-            //onMouseUp={handleMouseUp}
+            onMouseUp={handleMouseUp}
             onMouseMove={handleMouseMove}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
