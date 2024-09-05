@@ -30,34 +30,46 @@ app.add_middleware(
 )
 
 class ImageData(BaseModel):
+    users: str
     image: str
 
 class InpaintData(BaseModel):
+    users: str
     original_image: str
     mask_image: str
 
 # プロンプトの情報を保持するクラス変数
 class PromptData:
+    users = ""
     prompt = ""
     negative_prompt = ""
 
 class ApplyPromptsData(BaseModel):
+    users: str
     prompt: str
     negative_prompt: str
 
 class ApplyModeData(BaseModel):
   mode: str
 
+# ユーザごとのデータを管理する辞書
+user_prompts = {}
+
 @app.post("/api/process-image")
 async def process_image(data: ImageData):
     try:
         # Base64エンコードされた画像データをデコード
+        user = data.users
         image_data = base64.b64decode(data.image.split(",")[1])
         image = Image.open(io.BytesIO(image_data))
 
         # 画像の線を赤に変更する処理
-        red_image = process_scribble(image)
-        print("red_image")
+        print(f"starting scribble image for {user}")
+        print(f"Prompt: {user_prompts[user]['prompt']}\n", 
+          f"Negative Prompt: {user_prompts[user]['negative_prompt']}")
+        
+        red_image = process_scribble(user,image)
+        print("make_image")
 
         # 画像をBase64にエンコードして返却
         buffered = io.BytesIO()
@@ -69,7 +81,7 @@ async def process_image(data: ImageData):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def process_scribble(image: Image.Image) -> Image.Image:
+def process_scribble(user:str,image: Image.Image) -> Image.Image:
 
     # ピクセルデータを取得
     datas = image.getdata()
@@ -92,7 +104,7 @@ def process_scribble(image: Image.Image) -> Image.Image:
 
     # 画像をPNG形式で保存
     image.save('inputs/refer.png', 'PNG')
-    image = sdxl.generate_image(PromptData.prompt, PromptData.negative_prompt,'inputs/refer.png',controlnet_conditioning_scale = 0.3, mode = "scribble")
+    image = sdxl.generate_image(user_prompts[user]['prompt'], user_prompts[user]['negative_prompt'],'inputs/refer.png',controlnet_conditioning_scale = 0.3, mode = "scribble")
     print("image")
     image = image.convert("RGBA")
     return image
@@ -101,6 +113,7 @@ def process_scribble(image: Image.Image) -> Image.Image:
 async def inpaint(data: InpaintData):
     try:
         # Base64エンコードされた元画像とマスク画像をデコード
+        user = data.users
         original_image_data = base64.b64decode(data.original_image.split(",")[1])
         mask_image_data = base64.b64decode(data.mask_image.split(",")[1])
 
@@ -113,7 +126,10 @@ async def inpaint(data: InpaintData):
         # マスクに従って元画像の範囲を消去
         result_image_tensor, mask_tensor = apply_mask(original_image, mask_image)
         #result_image.save('inputs/refer.png', 'PNG')
-        image = sdxl.generate_image(PromptData.prompt, PromptData.negative_prompt,result_image_tensor,controlnet_conditioning_scale = 0.9, mode = "inpaint", mask_image = mask_tensor)
+        print(f"starting inpaint image for {user}")
+        print(f"Prompt: {user_prompts[user]['prompt']}\n", 
+          f"Negative Prompt: {user_prompts[user]['negative_prompt']}")
+        image = sdxl.generate_image(user_prompts[user]['prompt'], user_prompts[user]['negative_prompt'],result_image_tensor,controlnet_conditioning_scale = 0.9, mode = "inpaint", mask_image = mask_tensor)
         image = image.convert("RGBA")
 
         # 画像をBase64にエンコードして返却
@@ -147,10 +163,21 @@ def apply_mask(original_image: Image.Image, mask_image: Image.Image) -> Image.Im
 
 @app.post("/api/apply-prompts")
 async def apply_prompts(data: ApplyPromptsData):
-    # プロンプトとネガティブプロンプトのデータを保存
+    # ユーザが既に存在する場合は更新、存在しない場合は新規に作成
+    user_prompts[data.users] = {
+        "prompt": data.prompt,
+        "negative_prompt": data.negative_prompt
+    }
+    
+    # 確認のためコンソールに出力
+    print(f"Updated Prompts for {data.users}: Prompt: {user_prompts[data.users]['prompt']}\n", 
+          f"Negative Prompt: {user_prompts[data.users]['negative_prompt']}")
+    
+    """# プロンプトとネガティブプロンプトのデータを保存
+    PromptData.users = data.users
     PromptData.prompt = data.prompt
     PromptData.negative_prompt = data.negative_prompt
-    print(f"Prompt: {PromptData.prompt}", f"Negative Prompt: {PromptData.negative_prompt}")
+    print(f"Prompt: {PromptData.prompt}", f"Negative Prompt: {PromptData.negative_prompt}")"""
 
     return {"message": "Prompts applied successfully"}
 
@@ -168,6 +195,7 @@ async def change_mode(data: ApplyModeData):
     print("loading sketch mode")
     sdxl.memory_reset_model(controlnet_path = "xinsir/controlnet-scribble-sdxl-1.0")
     print("loaded sketch mode")"""
+
 
 if __name__ == "__main__":
     import uvicorn

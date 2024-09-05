@@ -33,6 +33,7 @@ const HomePage = () => {
   const sketchCanvasRef = useRef<HTMLCanvasElement>(null);
   const inpaintCanvasRef = useRef<HTMLCanvasElement>(null);
   const [prompt, setPrompt] = useState('');
+  const [users, setUsers] = useState('user01');
   const [negativePrompt, setNegativePrompt] = useState('');
   const [isButtonPressed, setIsButtonPressed] = useState(false);
 
@@ -147,6 +148,7 @@ const HomePage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          users: users,
           prompt: prompt,
           negative_prompt: negativePrompt
         }),
@@ -166,6 +168,15 @@ const HomePage = () => {
   return (
     <div className="flex flex-col h-screen">
       <div className="flex justify-center items-center mb-4">
+      User:
+      <input
+          type="text"
+          defaultValue="user01"
+          value={users}
+          onChange={(e) => setUsers(e.target.value)}
+          placeholder="necessary"
+          className="border rounded p-2 h-12"
+        />
         <button
           onClick={switchToSketch}
           className={`m-2 p-2 border ${mode === Mode.Sketch ? 'bg-blue-500 text-white' : 'bg-white text-black'}`}
@@ -223,7 +234,7 @@ const HomePage = () => {
       <div className="flex justify-center items-center space-x-4">
         {mode === Mode.Sketch && (
           <>
-            <SketchMode setProcessedImage={setProcessedImage} canvasRef={sketchCanvasRef} />
+            <SketchMode users={users} setProcessedImage={setProcessedImage} canvasRef={sketchCanvasRef} />
             <div className="flex flex-col items-center">
               <div>Result Images</div>
               <div className="border border-blue-500 w-[500px] h-[500px] flex justify-center items-center">
@@ -237,7 +248,7 @@ const HomePage = () => {
           </>
         )}
         {mode === Mode.Inpaint && (
-          <InpaintMode processedImage={processedImage} setProcessedImage={setProcessedImage} canvasRef={inpaintCanvasRef} setMaskImage={setMaskImage} />
+          <InpaintMode users={users} processedImage={processedImage} setProcessedImage={setProcessedImage} canvasRef={inpaintCanvasRef} setMaskImage={setMaskImage} />
         )}
       </div>
     </div>

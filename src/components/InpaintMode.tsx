@@ -1,13 +1,14 @@
 import React, { useRef, useState, useEffect, RefObject } from 'react';
 
 interface InpaintModeProps {
+  users: string;
   processedImage: string | null;
   setProcessedImage: (image: string | null) => void;
   canvasRef: RefObject<HTMLCanvasElement>;
   setMaskImage: (image: string | null) => void;
 }
 
-const InpaintMode: React.FC<InpaintModeProps> = ({ processedImage, setProcessedImage, canvasRef, setMaskImage }) => {
+const InpaintMode: React.FC<InpaintModeProps> = ({ users, processedImage, setProcessedImage, canvasRef, setMaskImage }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
   const [currentMaskImage, setCurrentMaskImage] = useState<string | null>(null);
@@ -124,6 +125,7 @@ const InpaintMode: React.FC<InpaintModeProps> = ({ processedImage, setProcessedI
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          users: users,
           original_image: processedImage,
           mask_image: currentMaskImage,
         }),
